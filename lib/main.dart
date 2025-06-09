@@ -10,15 +10,39 @@ void main() async {
   runApp(MyApp(Locale(languageCode)));
 }
 
-class MyApp extends StatelessWidget {
-  final Locale locale;
-  const MyApp(this.locale, {super.key});
+class MyApp extends StatefulWidget {
+  final Locale initialLocale;
+  const MyApp(this.initialLocale, {super.key});
+
+  static void setLocale(BuildContext context, Locale newLocale) {
+    final _MyAppState? state = context.findAncestorStateOfType<_MyAppState>();
+    state?.changeLocale(newLocale);
+  }
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late Locale _locale;
+
+  @override
+  void initState() {
+    super.initState();
+    _locale = widget.initialLocale;
+  }
+
+  void changeLocale(Locale locale) {
+    setState(() {
+      _locale = locale;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Currency Converter',
-      locale: locale,
+      locale: _locale,
       supportedLocales: const [Locale('en'), Locale('es')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

@@ -20,12 +20,29 @@ class _CurrencyConverterPageState extends State<CurrencyConverterPage> {
   @override
   void initState() {
     super.initState();
-    _changeLanguage;
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final lang = await LanguageService.getLanguage();
+    setState(() {
+      language = lang;
+    });
   }
 
   Future<void> _convert() async {
-    final amount = double.tryParse(_controller.text);
-    if (amount == null) return;
+    // Limpiar la entrada para asegurar el formato correcto
+    final input = _controller.text.replaceAll(',', '').replaceAll(' ', '');
+    final amount = double.tryParse(input);
+
+    if (amount == null) {
+      _showMessage(
+        language == 'es'
+            ? 'Por favor ingresa un número válido.'
+            : 'Please enter a valid number.',
+      );
+      return;
+    }
 
     final isConnected = await ConnectivityService.hasConnection();
     if (!isConnected) {
@@ -43,21 +60,15 @@ class _CurrencyConverterPageState extends State<CurrencyConverterPage> {
     }
 
     try {
-      // Obtenemos tasas EUR -> [USD, GBP]
       final rates = await CurrencyService.getRates(currencies);
-
-      // Conversión COP -> EUR (con tasa estimada local, porque no hay API para COP)
-      const copToEur = 0.00023; // Ajustable
-
-      final eurAmount = amount * copToEur;
 
       setState(() {
         results = {
-          for (var entry in rates.entries) entry.key: entry.value * eurAmount,
+          for (var entry in rates.entries)
+            entry.key: amount * entry.value, // directo desde COP
         };
       });
     } catch (_) {
-      // Si falla la API, aplica tasas por defecto
       setState(() {
         results = ConnectivityService.defaultRates.map(
           (key, rate) => MapEntry(key, amount * rate),
@@ -72,11 +83,11 @@ class _CurrencyConverterPageState extends State<CurrencyConverterPage> {
   }
 
   Future<void> _changeLanguage(String lang) async {
-    await LanguageService.setLanguage(lang);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => MyApp(Locale(lang))),
-    );
+    await LanguageService.setLanguage(lang); // Guardar en SharedPreferences
+    setState(() {
+      language = lang;
+    });
+    MyApp.setLocale(context, Locale(lang)); // Cambiar idioma en caliente
   }
 
   void _showMessage(String msg) {
